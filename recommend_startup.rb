@@ -7,6 +7,9 @@
 # 	5. Think of how to quickly search recommendations
 # 	6. put it into production
 require 'json'
+load 'similarity.rb'
+
+include Similarity
 
 # 4 => invest
 # 3 => meet
@@ -23,7 +26,7 @@ scores = {
 		"蚁视科技" => 5, 
 		"Teambition" => 3
 	}, 
-	'Fan' => {
+	'范博' => {
 		"创投圈" => 5, 
 		"嘀嘀打车" => 3, 
 		"陌陌" => 0, 
@@ -69,30 +72,26 @@ scores = {
 
 object = ARGV[0]
 raise "#{object} does not exist." unless scores[object]
+
+sim_method = ARGV[1]
 # 
 # target = ARGV[1]
 # raise "#{target} does not exist." unless scores[target]
 
-def euclidean_dist(data_set, object, target)
-	common_startups = data_set[object].keys and data_set[target].keys
-	return 0 if common_startups.empty?
-
-	pows = common_startups.map do |startup|
-		(data_set[object][startup] - data_set[target][startup]) ** 2
-	end
-	1.0 / (1 + (Math.sqrt pows.inject(0){ |v,  i| i += v  }))
-end
 
 # p "#{object} ~ #{target}: " 
 # p euclidean_dist(scores, object, target)
 
-def recommend_investor(data_set, object)
+def recommend_investor(data_set, object, similarity_method)
 	# use euclidean_dist
 	results = (data_set.keys.dup - [object]).inject([]) do |arr, target|
-		arr.push [target, euclidean_dist(data_set, object, target)]
+		arr.push [target, send(similarity_method, data_set, object, target)]
 	end
 	results.sort{ |x, y| y[1] <=> x[1] }
 end
 
-ret = recommend_investor(scores, 'Michael')
-puts ret.map{|x| "#{x[0]}: #{x[1]}"}.join("; ")
+ret = recommend_investor(scores, object, sim_method || :euclidean_dist)
+puts "---------------------------"
+puts "按推荐度排序:"
+puts ret.map{|x| "#{x[0]}: #{x[1]}"}.join(";\n")
+puts "---------------------------"
